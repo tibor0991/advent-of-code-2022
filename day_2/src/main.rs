@@ -70,8 +70,6 @@ fn main() -> Result<(), String>{
     let strategy_guide = fs::read_to_string(&guide_path)
         .map_err(|err| format!("Cannot open file {guide_path}: {}", err.to_string()))?;
 
-    //let strategy_guide = String::from("A Y\nB X\nC Z");
-
     let final_result: u8 = strategy_guide
         // Splits the input along newlines
         .split('\n')
@@ -81,19 +79,21 @@ fn main() -> Result<(), String>{
             .split_once(' ')
             // Convert the option to a result
             .ok_or(format!("Unable to read line {line}"))
-            // Convert the (&str, &str) 2-tuple to a (Move, Move) 2-tuple
-            .map(|split_line| convert_line2tuple(split_line))?
-            // Convert each (Move, Move) tuple to a (Outcome, Move) tuple
-            // Outcome is relative to the main character
-            // Move is the move played by the main character
-            .map(|pair| (Outcome::from(pair), pair.1))
-            // Sum the value of the outcome to the value of the played move to obtain the score
-            .map(|(outcome, my_move):(Outcome, Move)| (my_move as u8) + (outcome as u8) ))
-        // Collect all scores as Result, in order to back-propagate errors to the caller
+            // Convert each (&str, &str) line to a u8 value (the score computed for that line)
+            .map(|split_line| 
+                // (&str, &str) -> (Move, Move)
+                convert_line2tuple(split_line)
+                // (Move, Move) -> (Outcome, Move)
+                .and_then(|pair| Ok((Outcome::from(pair), pair.1)))
+                // (Outcome, Move) -> u8
+                .and_then(|(outcome, my_move): (Outcome, Move)| Ok((my_move as u8) + (outcome as u8))))?)   // Question mark to automatically unwrap Result
+        // Collects and unwrap as vector of u8
         .collect::<Result<Vec<_>,_>>()?
         .into_iter()
-        // Sum all scores
+        // Compute sum of all scores
         .sum();
+
+
 
     println!("The outcome of this run is {final_result}!");
 
