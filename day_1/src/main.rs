@@ -1,8 +1,7 @@
-
-
+use std::collections::BinaryHeap;
 use std::env;
 use std::fs;
-use std::process::exit;
+
 
 
 fn main() -> Result<(), String>{
@@ -18,21 +17,41 @@ fn main() -> Result<(), String>{
     let file_content = fs::read_to_string(input_path)
         .map_err( |err| format!("Unable to open file {input_path}: {err}"))?;
     
-    let (elf_index, highest_calorie) = file_content
-        .split("\n\n")
-        .map(|full_inv|
-            full_inv.split("\n")
-            .filter_map(|s|->Option<_> {
-                match s.parse::<u32>() {
-                    Ok(t) => Some(t),
-                    Err(e) => { println!("Unable to parse [{s}]: {e}", ); exit(2) }
-                }
-            })
-            .sum::<u32>()
-        )
-        .enumerate()
-        .max_by(|a, b| a.1.cmp(&b.1)).ok_or("An error occured!")?;
-    
-    println!("Elf {elf_index} has the most calories in its backpack! ({highest_calorie} calories)");
+    // Find the three top-most elves:
+    let podium = 
+        // Split input string over double new-lines
+        file_content.split("\n\n")
+        // For each group of lines...
+        .map(|item| 
+            // Split again each group over single newlines
+            item.split("\n")
+            // For each line in a group, parse as a u32 and unwrap (disregard parsing errors, the input is clean)
+            .map( |s|
+                // Parses and returns a result
+                s.parse::<u32>()
+                // Disregard errors
+                .unwrap())
+            // Sum all values in a group
+            .sum::<u32>())
+        // Collect all total inventories into a binary heap (sorted low to high)
+        .collect::<BinaryHeap<_>>()
+        // Turn the binary heap into a sorted vector (into_iter_sorted is still not available)
+        .into_sorted_vec()
+        // Get iterator from vec
+        .into_iter()
+        // Reverse its traversing order (greatest to lowest value)
+        .rev()
+        // Take only the first three sums
+        .take(3)
+        // Collect into a vec
+        .collect::<Vec<_>>();
+
+    // First question: what's the highest amount of calories an elf is carrying?
+    println!("The highest amount of calories carried by an elf is {}", &podium[0] );
+        
+    // Second question: what's the total amount of calories carried by the top three elves?
+    let podium_sum: u32 = podium.iter().sum();
+    println!("The sum of the top 3 elves with the most calories is {podium_sum}");
+
     Ok(())
 }
